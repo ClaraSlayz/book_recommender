@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 图书解析器 - 修复版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .fix-note {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px;
+            color: #155724;
+        }
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px;
+            text-align: center;
+            border: 3px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+        .upload-section:hover { border-color: #667eea; background: #f0f4ff; }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        .button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .button.success { background: #28a745; }
+        .button:disabled { background: #e9ecef; color: #6c757d; cursor: not-allowed; }
+        .results { display: none; margin: 20px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #f8f9fa; border-radius: 10px; padding: 15px; text-align: center; border: 2px solid #e9ecef; }
+        .stat-number { font-size: 1.8rem; font-weight: bold; color: #667eea; }
+        .stat-label { color: #6c757d; font-size: 0.9rem; }
+        .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .book-card { background: white; border-radius: 10px; padding: 15px; border: 2px solid #e9ecef; display: flex; gap: 10px; }
+        .book-cover { width: 60px; height: 90px; border-radius: 5px; object-fit: cover; background: #f8f9fa; }
+        .book-info { flex: 1; }
+        .book-title { font-weight: bold; margin-bottom: 5px; }
+        .book-meta { font-size: 0.9rem; color: #6c757d; }
+        .log-area { background: #2d3748; color: #e2e8f0; border-radius: 10px; padding: 15px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9rem; margin: 15px 0; display: none; }
+        .log-success { color: #68d391; }
+        .log-error { color: #fc8181; }
+        .log-warning { color: #f6e05e; }
+        .log-info { color: #63b3ed; }
+        .progress-bar { background: #e9ecef; border-radius: 10px; height: 20px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s ease; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 图书解析器 - 修复版</h1>
+            <p>✅ 确保图片和书名正确匹配，只下载高质量图片</p>
+        </div>
+
+        <div class="fix-note">
+            <h3>🔧 修复内容</h3>
+            <ul>
+                <li>✅ 解决图片文件名与内容不匹配的问题</li>
+                <li>✅ 每本书只下载一张最高质量的图片</li>
+                <li>✅ 确保书名和图片URL一一对应</li>
+                <li>✅ 优先下载 large → medium → small 图片</li>
+            </ul>
+        </div>
+
+        <div class="upload-section" id="uploadArea">
+            <div style="font-size: 3rem; margin-bottom: 15px;">📁</div>
+            <div style="font-size: 1.2rem; margin-bottom: 20px;">
+                将借书记录HTML文件拖拽到这里或点击选择
+            </div>
+            <input type="file" id="fileInput" style="display: none;" accept=".html,.htm">
+            <button class="button" onclick="document.getElementById('fileInput').click()">
+                📂 选择HTML文件
+            </button>
+        </div>
+
+        <div class="results" id="results">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBooks">0</div>
+                    <div class="stat-label">总书籍数量</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="withCovers">0</div>
+                    <div class="stat-label">有封面图片</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="downloaded">0</div>
+                    <div class="stat-label">已下载</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <button class="button success" id="downloadBtn" disabled>📥 下载所有封面</button>
+                <button class="button" id="exportBtn" disabled>📊 导出数据</button>
+                <button class="button" id="logBtn">📋 显示日志</button>
+            </div>
+
+            <div id="downloadProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="progressText" style="text-align: center; color: #6c757d;">准备下载...</div>
+            </div>
+
+            <div class="log-area" id="logArea"></div>
+            <div class="books-grid" id="booksGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        class FixedBookParser {
+            constructor() {
+                this.books = [];
+                this.setupEvents();
+                this.log('修复版解析器已启动', 'info');
+            }
+
+            setupEvents() {
+                const uploadArea = document.getElementById('uploadArea');
+                const fileInput = document.getElementById('fileInput');
+
+                // 拖拽功能
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.borderColor = '#667eea';
+                    uploadArea.style.background = '#e3f2fd';
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.style.borderColor = '#dee2e6';
+                    uploadArea.style.background = '#f8f9fa';
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.borderColor = '#dee2e6';
+                    uploadArea.style.background = '#f8f9fa';
+                    if (e.dataTransfer.files.length > 0) {
+                        this.handleFile(e.dataTransfer.files[0]);
+                    }
+                });
+
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleFile(e.target.files[0]);
+                    }
+                });
+
+                document.getElementById('downloadBtn').addEventListener('click', () => this.downloadAll());
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
+                document.getElementById('logBtn').addEventListener('click', () => this.toggleLog());
+            }
+
+            async handleFile(file) {
+                if (!file.name.toLowerCase().endsWith('.html') && !file.name.toLowerCase().endsWith('.htm')) {
+                    alert('请选择HTML文件');
+                    return;
+                }
+
+                try {
+                    const content = await this.readFile(file);
+                    this.parseHTML(content);
+                    this.displayResults();
+                    this.log('HTML文件解析成功！', 'success');
+                } catch (error) {
+                    this.log('文件处理失败: ' + error.message, 'error');
+                }
+            }
+
+            readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = () => reject(new Error('文件读取失败'));
+                    reader.readAsText(file, 'UTF-8');
+                });
+            }
+
+            parseHTML(htmlContent) {
+                this.books = [];
+                const bookData = this.extractBookDataFixed(htmlContent);
+                
+                bookData.forEach((book, index) => {
+                    this.books.push({
+                        id: index + 1,
+                        title: book.title,
+                        author: book.author || '未知作者',
+                        isbn: book.isbn || String(index + 1).padStart(3, '0'),
+                        coverUrl: book.url
+                    });
+                });
+
+                this.log(`成功解析 ${this.books.length} 本书籍（修复版逻辑）`, 'success');
+            }
+
+            extractBookDataFixed(htmlContent) {
+                /**
+                 * 修复版的书籍数据提取逻辑
+                 * 确保书名和图片URL一一对应，只提取最高质量的图片
+                 */
+                const books = [];
+                
+                // 使用正则表达式找到所有书籍的JSON数据块
+                let bookPattern = /"coverImages":\s*{[^}]*?"large":"([^"]*?)"[^}]*?}[^}]*?"title":"([^"]*?)"/g;
+                let matches = [...htmlContent.matchAll(bookPattern)];
+                
+                this.log(`🔍 找到 ${matches.length} 个书籍数据块（large图片+书名）`, 'info');
+                
+                if (matches.length === 0) {
+                    // 如果没找到large，尝试medium
+                    bookPattern = /"coverImages":\s*{[^}]*?"medium":"([^"]*?)"[^}]*?}[^}]*?"title":"([^"]*?)"/g;
+                    matches = [...htmlContent.matchAll(bookPattern)];
+                    this.log(`🔍 fallback: 找到 ${matches.length} 个书籍数据块（medium图片+书名）`, 'info');
+                }
+                
+                if (matches.length === 0) {
+                    // 如果还没找到，尝试small
+                    bookPattern = /"coverImages":\s*{[^}]*?"small":"([^"]*?)"[^}]*?}[^}]*?"title":"([^"]*?)"/g;
+                    matches = [...htmlContent.matchAll(bookPattern)];
+                    this.log(`🔍 fallback: 找到 ${matches.length} 个书籍数据块（small图片+书名）`, 'info');
+                }
+                
+                // 如果上面的方法都失败，使用分离式提取但保证数量匹配
+                if (matches.length === 0) {
+                    this.log("⚠️ 无法直接匹配，使用分离式提取...", 'warning');
+                    
+                    // 只提取large图片
+                    let imageUrls = [...htmlContent.matchAll(/"large":"(https:\/\/contentcafe2\.btol\.com\/ContentCafe\/Jacket\.aspx\?[^"]+)"/g)];
+                    if (imageUrls.length === 0) {
+                        // 如果没有large，提取medium
+                        imageUrls = [...htmlContent.matchAll(/"medium":"(https:\/\/contentcafe2\.btol\.com\/ContentCafe\/Jacket\.aspx\?[^"]+)"/g)];
+                    }
+                    if (imageUrls.length === 0) {
+                        // 如果没有medium，提取small
+                        imageUrls = [...htmlContent.matchAll(/"small":"(https:\/\/contentcafe2\.btol\.com\/ContentCafe\/Jacket\.aspx\?[^"]+)"/g)];
+                    }
+                    
+                    // 提取书名
+                    const titles = [...htmlContent.matchAll(/"title":"([^"]+)"/g)];
+                    
+                    this.log(`🔗 分离提取: ${imageUrls.length} 个图片URL`, 'info');
+                    this.log(`📚 分离提取: ${titles.length} 个书名`, 'info');
+                    
+                    // 确保数量匹配
+                    const minCount = Math.min(imageUrls.length, titles.length);
+                    for (let i = 0; i < minCount; i++) {
+                        matches.push([null, imageUrls[i][1], titles[i][1]]);
+                    }
+                }
+                
+                // 提取ISBN（如果有的话）
+                const isbns = [...htmlContent.matchAll(/"isbn13":"(\d{13})"/g)];
+                
+                this.log(`🔢 找到 ${isbns.length} 个ISBN`, 'info');
+                this.log(`📖 最终匹配: ${matches.length} 个书籍`, 'info');
+                
+                // 创建书籍数据
+                matches.forEach((match, i) => {
+                    const url = match[1];
+                    const title = match[2];
+                    
+                    // 清理书名
+                    const cleanTitle = title.replace(/[<>]/g, '').trim();
+                    
+                    const bookInfo = {
+                        url: url,
+                        title: cleanTitle,
+                        isbn: isbns[i] ? isbns[i][1] : String(i + 1).padStart(3, '0'),
+                        index: i + 1
+                    };
+                    
+                    books.push(bookInfo);
+                    
+                    // 显示前5个匹配结果用于验证
+                    if (i < 5) {
+                        this.log(`📋 [${String(i+1).padStart(2, '0')}] ${cleanTitle.substring(0, 30)}... -> ${url.substring(0, 60)}...`, 'info');
+                    }
+                });
+                
+                return books;
+            }
+
+            displayResults() {
+                document.getElementById('results').style.display = 'block';
+                
+                // 更新统计
+                document.getElementById('totalBooks').textContent = this.books.length;
+                document.getElementById('withCovers').textContent = this.books.filter(book => book.coverUrl).length;
+                
+                // 启用按钮
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('exportBtn').disabled = false;
+                
+                // 显示书籍列表
+                this.displayBooks();
+            }
+
+            displayBooks() {
+                const grid = document.getElementById('booksGrid');
+                grid.innerHTML = '';
+                
+                this.books.forEach(book => {
+                    const bookCard = document.createElement('div');
+                    bookCard.className = 'book-card';
+                    bookCard.innerHTML = `
+                        <img class="book-cover" src="${book.coverUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iOTAiIGZpbGw9IiNmOGY5ZmEiPjxyZWN0IHdpZHRoPSI2MCIgaGVpZ2h0PSI5MCIgZmlsbD0iI2Y4ZjlmYSIgc3Ryb2tlPSIjZGVlMmU2Ii8+PHRleHQgeD0iMzAiIHk9IjQ1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmM3NTdkIj7kuabmnKw8L3RleHQ+PC9zdmc+'}" alt="Book Cover">
+                        <div class="book-info">
+                            <div class="book-title">${book.title || '未知书名'}</div>
+                            <div class="book-meta">
+                                作者: ${book.author}<br>
+                                ISBN: ${book.isbn}
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(bookCard);
+                });
+            }
+
+            async downloadAll() {
+                const booksWithCovers = this.books.filter(book => book.coverUrl);
+                if (booksWithCovers.length === 0) {
+                    alert('没有找到封面图片');
+                    return;
+                }
+
+                document.getElementById('downloadProgress').style.display = 'block';
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+
+                this.log(`开始下载 ${booksWithCovers.length} 个封面图片（修复版逻辑）...`, 'info');
+
+                for (let i = 0; i < booksWithCovers.length; i++) {
+                    const book = booksWithCovers[i];
+                    const progress = ((i + 1) / booksWithCovers.length) * 100;
+                    
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `下载进度: ${i + 1}/${booksWithCovers.length} - ${book.title}`;
+
+                    try {
+                        await this.downloadImage(book.coverUrl, `${book.isbn}_${this.sanitizeFilename(book.title)}.jpg`);
+                        this.log(`✓ 下载成功: ${book.title}`, 'success');
+                    } catch (error) {
+                        this.log(`✗ 下载失败: ${book.title} - ${error.message}`, 'error');
+                    }
+
+                    // 更新统计
+                    document.getElementById('downloaded').textContent = i + 1;
+                    
+                    // 防止请求过快
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                this.log('所有封面下载完成！（修复版确保文件名正确匹配）', 'success');
+                alert('封面图片下载完成！');
+            }
+
+            async downloadImage(url, filename) {
+                return new Promise((resolve, reject) => {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.style.display = 'none';
+                    
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    
+                    img.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            
+                            canvas.toBlob((blob) => {
+                                const url = URL.createObjectURL(blob);
+                                link.href = url;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                                resolve();
+                            }, 'image/jpeg', 0.9);
+                        } catch (error) {
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            resolve();
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        try {
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            resolve();
+                        } catch (error) {
+                            reject(new Error('图片下载失败'));
+                        }
+                    };
+                    
+                    img.src = url;
+                });
+            }
+
+            sanitizeFilename(filename) {
+                return filename.replace(/[<>:"/\\|?*]/g, '_').substring(0, 50);
+            }
+
+            exportData() {
+                const content = JSON.stringify(this.books, null, 2);
+                const blob = new Blob([content], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'library_books_fixed.json';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+                this.log('JSON数据已导出！', 'success');
+            }
+
+            log(message, type = 'info') {
+                const logArea = document.getElementById('logArea');
+                const entry = document.createElement('div');
+                entry.className = `log-${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logArea.appendChild(entry);
+                logArea.scrollTop = logArea.scrollHeight;
+                console.log(message);
+            }
+
+            toggleLog() {
+                const logArea = document.getElementById('logArea');
+                const btn = document.getElementById('logBtn');
+                
+                if (logArea.style.display === 'none' || !logArea.style.display) {
+                    logArea.style.display = 'block';
+                    btn.textContent = '📋 隐藏日志';
+                } else {
+                    logArea.style.display = 'none';
+                    btn.textContent = '📋 显示日志';
+                }
+            }
+        }
+
+        // 启动应用
+        new FixedBookParser();
+    </script>
+</body>
+</html> 

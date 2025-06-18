@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭智能图书推荐系统</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>📚 家庭智能图书推荐系统</h1>
+            <p>基于真实借阅记录，为每个孩子提供个性化推荐</p>
+        </header>
+
+        <!-- 孩子选择器 -->
+        <section class="child-selector-section">
+            <div class="child-selector">
+                <div class="child-card" data-child="sister" id="child-sister">
+                    <div class="child-avatar">👧</div>
+                    <div class="child-name">姐姐</div>
+                    <div class="child-age">10岁</div>
+                </div>
+                <div class="child-card" data-child="younger" id="child-younger">
+                    <div class="child-avatar">👶</div>
+                    <div class="child-name">妹妹</div>
+                    <div class="child-age">8岁</div>
+                </div>
+                <div class="child-card" data-child="both" id="child-both">
+                    <div class="child-avatar">👭</div>
+                    <div class="child-name">共同推荐</div>
+                    <div class="child-age">适合两人</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据管理区域 -->
+        <section class="main-section" id="dataSection">
+            <h2 class="section-title">📊 数据管理与分析</h2>
+            
+            <!-- 文件上传 -->
+            <div class="upload-area" id="uploadArea">
+                <div id="uploadContent">
+                    <p class="upload-title">📁 上传借书记录</p>
+                    <p class="upload-subtitle">支持 CSV、JSON、TXT 格式</p>
+                    <p class="upload-hint">点击选择文件或拖拽到此处</p>
+                </div>
+                <input type="file" id="fileInput" class="file-input" accept=".csv,.json,.txt">
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalBooks">0</div>
+                    <div class="stat-label">总借阅数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="uniqueAuthors">0</div>
+                    <div class="stat-label">作者数量</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="topGenre">-</div>
+                    <div class="stat-label">主要类型</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="readingLevel">-</div>
+                    <div class="stat-label">阅读水平</div>
+                </div>
+            </div>
+
+            <!-- 当前选择信息 -->
+            <div class="current-selection">
+                <p id="currentSelection">请选择要推荐的孩子</p>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+                <button class="button primary" id="instantBtn" disabled>
+                    ⚡ 基于历史记录推荐
+                </button>
+                <button class="button primary" id="gameBtn" disabled>
+                    🎮 偏好识别游戏（3分钟）
+                </button>
+                <button class="button secondary" id="ratingBtn">
+                    ⭐ 五星评分助手
+                </button>
+            </div>
+
+            <!-- 会话管理 -->
+            <div class="session-controls">
+                <button class="button secondary" id="saveBtn">💾 保存会话</button>
+                <button class="button secondary" id="loadBtn">📂 历史会话</button>
+                <button class="button secondary" id="exportBtn">📤 导出结果</button>
+            </div>
+
+            <!-- 历史会话列表 -->
+            <div class="saved-sessions" id="savedSessions">
+                <h3>历史会话</h3>
+                <div id="sessionsList"></div>
+            </div>
+        </section>
+
+        <!-- 游戏模式选择 -->
+        <section class="main-section game-mode-selection" id="gameModeSelection">
+            <h2 class="section-title">
+                🎮 选择偏好识别模式
+            </h2>
+            <p class="game-description">
+                选择适合<span id="modeChildName">孩子</span>的游戏模式来识别阅读偏好
+            </p>
+            
+            <div class="mode-cards">
+                <div class="mode-card" data-mode="grid">
+                    <div class="mode-icon">⚡</div>
+                    <h3>快速选择模式</h3>
+                    <div class="mode-time">约3分钟</div>
+                    <div class="mode-description">
+                        从12本书中选择3-5本感兴趣的书籍，快速识别偏好
+                    </div>
+                    <div class="mode-features">
+                        <span class="feature">✓ 简单快速</span>
+                        <span class="feature">✓ 适合初次使用</span>
+                    </div>
+                </div>
+                
+                <div class="mode-card" data-mode="comparison">
+                    <div class="mode-icon">🎯</div>
+                    <h3>精确对比模式</h3>
+                    <div class="mode-time">约5-8分钟</div>
+                    <div class="mode-description">
+                        通过两两对比的方式，精确识别书籍偏好排序
+                    </div>
+                    <div class="mode-features">
+                        <span class="feature">✓ 结果更精确</span>
+                        <span class="feature">✓ ELO评分算法</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mode-controls">
+                <button class="button secondary" id="backToMainBtn">← 返回</button>
+            </div>
+        </section>
+
+        <!-- 偏好识别游戏 -->
+        <section class="main-section preference-game" id="preferenceGame">
+            <h2 class="section-title">
+                🎮 <span id="gameChildName">孩子</span>的偏好识别游戏
+            </h2>
+            <p class="game-description" id="gameDescription">
+                从下面选择3-5本感兴趣的书，帮助优化推荐算法（大约3分钟）
+            </p>
+            
+            <!-- 游戏进度 -->
+            <div class="game-progress" id="gameProgress">
+                <!-- 网格模式进度 -->
+                <div class="progress-text" id="gridProgress">
+                    已选择 <span id="selectedCount">0</span> 本书（至少选择3本）
+                </div>
+                
+                <!-- 对比模式进度 -->
+                <div class="comparison-progress" id="comparisonProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        对比进度：<span id="comparisonCurrent">0</span>/<span id="comparisonTotal">20</span>
+                        (<span id="comparisonPercent">0</span>%)
+                    </div>
+                </div>
+            </div>
+
+            <!-- 书籍网格 (快速选择模式) -->
+            <div class="books-grid" id="gameBooks"></div>
+            
+            <!-- 书籍对比 (精确对比模式) -->
+            <div class="book-comparison" id="bookComparison" style="display: none;">
+                <div class="comparison-question">
+                    <h3>你更喜欢哪本书？</h3>
+                </div>
+                <div class="comparison-books">
+                    <div class="comparison-book" id="comparisonBook1">
+                        <div class="book-title"></div>
+                        <div class="book-author"></div>
+                        <div class="book-genre"></div>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="comparison-book" id="comparisonBook2">
+                        <div class="book-title"></div>
+                        <div class="book-author"></div>
+                        <div class="book-genre"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 游戏控制按钮 -->
+            <div class="game-controls">
+                <button class="button primary" id="finishGameBtn" disabled>
+                    完成游戏 ✨
+                </button>
+                <button class="button secondary" id="cancelGameBtn">取消</button>
+            </div>
+        </section>
+
+        <!-- 推荐结果 -->
+        <section class="main-section recommendations" id="recommendationsSection">
+            <h2 class="section-title">
+                🌟 为<span id="recommendChildName">孩子</span>推荐
+            </h2>
+            <div class="recommendations-info">
+                <p>基于阅读历史和偏好分析，为你精心挑选的书籍：</p>
+            </div>
+            <div id="recommendationsList"></div>
+        </section>
+
+        <!-- 新增：五星评级助手 -->
+        <section class="main-section rating-helper" id="ratingSection">
+            <h2 class="section-title">
+                ⭐ 阅读时光机评分
+            </h2>
+            <div class="rating-intro">
+                <p>帮助孩子给读过的书快速评分，然后导出到Goodreads获得专业推荐！</p>
+                <button class="button primary" id="startRatingBtn">
+                    🌟 开始评分
+                </button>
+            </div>
+
+            <!-- 评级界面 -->
+            <div class="rating-interface" id="ratingInterface" style="display: none;">
+                <!-- 进度显示 -->
+                <div class="rating-progress">
+                    <div class="progress-text" id="ratingProgress">第 1 本，共 10 本</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="ratingProgressBar"></div>
+                    </div>
+                </div>
+
+                <!-- 当前书籍 -->
+                <div class="rating-book-card">
+                    <h3 class="book-title" id="ratingBookTitle">书名</h3>
+                    <p class="book-author" id="ratingBookAuthor">作者</p>
+                    <p class="book-genre" id="ratingBookGenre">类型</p>
+                </div>
+
+                <!-- 评级问题 -->
+                <div class="rating-question">
+                    <h3>🤔 读这本书的时候，你的感受是？</h3>
+                </div>
+
+                <!-- 评级选项 -->
+                <div class="rating-options">
+                    <button class="rating-btn" data-rating="5">
+                        <div class="rating-emoji">🌟</div>
+                        <div class="rating-title">时光飞逝</div>
+                        <div class="rating-desc">读得停不下来，一口气读完！</div>
+                    </button>
+                    
+                    <button class="rating-btn" data-rating="4">
+                        <div class="rating-emoji">📚</div>
+                        <div class="rating-title">津津有味</div>
+                        <div class="rating-desc">很享受阅读过程，读得很开心</div>
+                    </button>
+                    
+                    <button class="rating-btn" data-rating="3">
+                        <div class="rating-emoji">⏰</div>
+                        <div class="rating-title">按部就班</div>
+                        <div class="rating-desc">正常读完了，还算有趣</div>
+                    </button>
+                    
+                    <button class="rating-btn" data-rating="2">
+                        <div class="rating-emoji">😴</div>
+                        <div class="rating-title">昏昏欲睡</div>
+                        <div class="rating-desc">读着有点困，需要强迫自己读</div>
+                    </button>
+                    
+                    <button class="rating-btn" data-rating="1">
+                        <div class="rating-emoji">🚫</div>
+                        <div class="rating-title">弃书而逃</div>
+                        <div class="rating-desc">没读完就放弃了，太无聊了</div>
+                    </button>
+                </div>
+
+                <!-- 评级反馈 -->
+                <div class="rating-feedback" id="ratingFeedback" style="display: none;">
+                    <!-- 动态内容 -->
+                </div>
+
+                <!-- 提示信息 -->
+                <div class="rating-hint" id="ratingHint" style="display: none;">
+                    <!-- 动态内容 -->
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="rating-controls">
+                    <button class="button secondary" id="prevRatingBtn">
+                        ⬅️ 上一本
+                    </button>
+                    <button class="button secondary" id="skipRatingBtn">
+                        ⏭️ 跳过
+                    </button>
+                </div>
+            </div>
+
+            <!-- 完成界面 -->
+            <div class="rating-complete" id="ratingComplete" style="display: none;">
+                <div id="ratingStats">
+                    <!-- 动态内容 -->
+                </div>
+                
+                <div class="export-section">
+                    <h4>📤 导出到Goodreads</h4>
+                    <p>点击下载CSV文件，然后按照指南导入到Goodreads：</p>
+                    <button class="button primary" id="exportRatingsBtn">
+                        📥 下载评级数据
+                    </button>
+                    
+                    <div class="goodreads-guide">
+                        <h5>📖 Goodreads导入指南：</h5>
+                        <ol>
+                            <li>登录 <a href="https://www.goodreads.com" target="_blank">Goodreads.com</a></li>
+                            <li>进入 "My Books" → "Import and export"</li>
+                            <li>选择刚下载的CSV文件上传</li>
+                            <li>等待处理完成，开始获得个性化推荐！</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="rating-actions">
+                    <button class="button secondary" onclick="app.showSection('home')">
+                        🏠 返回首页
+                    </button>
+                    <button class="button primary" onclick="app.startRatingSession()">
+                        🔄 重新评分
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Toast 通知 -->
+        <div class="toast" id="toast"></div>
+
+        <!-- 加载提示 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p>正在分析数据...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入脚本 -->
+    <script src="book-database.js"></script>
+    <script src="reading-analyzer.js"></script>
+    <script src="game-engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html> 
